@@ -1,0 +1,12 @@
+# Normalize line endings to LF in the repo for cross-platform consistency.
+* text=auto eol=lf
+
+# Treat notebooks as text but don't diff their JSON noisily.
+*.ipynb text eol=lf
+
+# Binary-ish artifacts (should be gitignored, but be safe).
+*.pt binary
+*.pth binary
+*.faiss binary
+*.index binary
+*.parquet binary

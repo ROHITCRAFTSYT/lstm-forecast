@@ -1,0 +1,26 @@
+# syntax=docker/dockerfile:1
+FROM python:3.11-slim AS base
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+# Install CPU-only PyTorch first (smaller, avoids CUDA wheels), then the package.
+RUN pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.1"
+
+COPY pyproject.toml README.md ./
+COPY src ./src
+RUN pip install ".[api,ai,data,rag]"
+
+# Copy docs so the chat assistant can index them at runtime.
+COPY docs ./docs
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"
+
+CMD ["uvicorn", "lstm_forecast.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

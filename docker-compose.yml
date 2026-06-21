@@ -1,0 +1,37 @@
+# Bring up the API and dashboard together:
+#   docker compose up --build
+# Pass your Claude key via the shell or a .env file (see .env.example). AI features are
+# optional — both services run fully without ANTHROPIC_API_KEY.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    image: lstm-forecast-api
+    ports:
+      - "8000:8000"
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LSTM_FORECAST_API__CORS_ORIGINS: "*"
+    volumes:
+      - cache:/app/.cache
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dashboard
+    image: lstm-forecast-dashboard
+    ports:
+      - "8501:8501"
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - cache:/app/.cache
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  cache:
