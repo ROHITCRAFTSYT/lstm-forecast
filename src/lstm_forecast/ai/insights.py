@@ -52,6 +52,13 @@ def describe_forecast(result: ForecastResult, label: str = "the series") -> str:
             f"Interval coverage on test set: {result.interval.get('coverage', float('nan')):.2f} "
             f"(nominal {result.interval.get('nominal', 1 - result.alpha):.2f})"
         )
+    dm = result.significance.get("vs_naive") if result.significance else None
+    if isinstance(dm, dict):
+        lines.append(
+            f"Diebold-Mariano vs naive: winner={dm.get('winner')}, "
+            f"p={dm.get('p_value', float('nan')):.3f} "
+            f"({'significant' if dm.get('significant') else 'not significant'} at 5%)"
+        )
     return "\n".join(lines)
 
 

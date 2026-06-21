@@ -12,7 +12,8 @@ from lstm_forecast.forecasting.baselines import (
     baseline_registry,
 )
 from lstm_forecast.forecasting.conformal import conformal_intervals
-from lstm_forecast.forecasting.forecaster import Forecaster, ForecastResult
+from lstm_forecast.forecasting.forecaster import Forecaster, ForecastResult, ModelSpec
+from lstm_forecast.forecasting.tuning import specs_from_suggestion, walk_forward_cv
 
 __all__ = [
     "ARIMAForecaster",
@@ -21,10 +22,13 @@ __all__ = [
     "ETSForecaster",
     "ForecastResult",
     "Forecaster",
+    "ModelSpec",
     "NaiveForecaster",
     "SeasonalNaiveForecaster",
     "backtest",
     "baseline_registry",
     "conformal_intervals",
     "dynamic_intervals",
+    "specs_from_suggestion",
+    "walk_forward_cv",
 ]

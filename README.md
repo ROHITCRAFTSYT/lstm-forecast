@@ -6,7 +6,7 @@
 [![Docs](https://github.com/ROHITCRAFTSYT/lstm-forecast/actions/workflows/docs.yml/badge.svg)](https://github.com/ROHITCRAFTSYT/lstm-forecast/actions/workflows/docs.yml)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.1%2B-ee4c2c)
-![Tests](https://img.shields.io/badge/tests-55%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-66%20passing-brightgreen)
 ![Lint](https://img.shields.io/badge/lint-ruff-261230)
 ![Types](https://img.shields.io/badge/types-mypy-2a6db2)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -33,7 +33,8 @@ It keeps the article's five capabilities and upgrades each one:
 
 - 🔎 **Retrieval-augmented forecasting (RAG)** — index historical *analog* windows and condition the model on "what happened after shapes like the recent past".
 - 🤖 **Claude AI layer** — natural-language forecast insights, a RAG **chat assistant** grounded in your docs + run results, and **LLM-assisted hyperparameter tuning** (Claude proposes, cross-validation decides).
-- 📊 **Honest benchmarking** — every run is scored against Naive / Drift / Seasonal-Naive / ARIMA / ETS baselines on a held-out test set, so "it beats the baselines" is *measured*, not asserted.
+- 📊 **Honest benchmarking** — every run is scored against Naive / Drift / Seasonal-Naive / ARIMA / ETS baselines on a held-out test set, with a **Diebold–Mariano significance test** vs naive, so "it beats the baselines" is *statistically measured*, not asserted.
+- 🎛️ **Cross-validated tuning + ensembling** — the AI-proposed grid is evaluated by walk-forward CV (`Forecaster.tune`), and forecasts can average a multi-seed **ensemble** for robustness.
 
 > ⚠️ **Not financial advice.** This is a research/engineering framework. Forecasts are uncertain; markets are not guaranteed to be predictable. See the [model card](docs/model_card.md).
 
@@ -224,7 +225,9 @@ Pass `ANTHROPIC_API_KEY` via your shell or a `.env` file (see `.env.example`).
 3. **Dynamic intervals** from a **rolling-origin backtest residual matrix** — widths grow with the horizon.
 4. **RAG analog conditioning** — z-normalised window k-NN gives the model a non-parametric memory of recurring regimes.
 5. **Leakage-safe reversible transforms** — detrend / deseason / robust-scale fit on *train only*, auto-reverted (including at future positions).
-6. **LLM-assisted tuning** — Claude proposes a structured candidate grid; cross-validation picks the winner.
+6. **LLM-assisted tuning, CV-decided** — Claude proposes a structured candidate grid; **walk-forward cross-validation** (`Forecaster.tune`) picks the winner.
+7. **Ensembling** — average `ensemble=N` differently-seeded models to cut initialisation variance.
+8. **Statistical rigor** — a **Diebold–Mariano test** reports whether the model's accuracy edge over naive is significant, not just numerically lower.
 
 See [`docs/architecture.md`](docs/architecture.md) for details and [`docs/model_card.md`](docs/model_card.md) for scope, limitations and the no-advice disclaimer.
 
@@ -264,7 +267,7 @@ src/lstm_forecast/
 └── cli.py         # `lstm-forecast` command-line interface
 dashboard/         # Streamlit app          docker/      # API + dashboard images
 examples/          # 6 runnable demos        docs/        # mkdocs site + model card
-tests/             # 55 tests (offline)      scripts/     # README asset generation
+tests/             # 66 tests (offline)      scripts/     # README asset generation
 ```
 
 ---

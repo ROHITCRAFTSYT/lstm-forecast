@@ -84,6 +84,21 @@ def test_rag_pipeline_runs(prices):
     assert res.point.shape == (6,)
 
 
+def test_ensemble_trains_multiple_members(prices):
+    f = Forecaster(y=prices["close"], current_dates=prices.index, future_dates=5, test_length=10)
+    res = f.fit_predict(_fast_spec(ensemble=3))
+    assert f._last_trainers is not None and len(f._last_trainers) == 3
+    assert res.point.shape == (5,)
+
+
+def test_significance_vs_naive_present(prices):
+    f = Forecaster(y=prices["close"], current_dates=prices.index, future_dates=6, test_length=15)
+    res = f.fit_predict(_fast_spec())
+    assert "vs_naive" in res.significance
+    dm = res.significance["vs_naive"]
+    assert "p_value" in dm and "winner" in dm and "significant" in dm
+
+
 def test_result_to_dict_serialisable(prices):
     f = Forecaster(y=prices["close"], current_dates=prices.index, future_dates=4, test_length=8)
     res = f.fit_predict(_fast_spec())

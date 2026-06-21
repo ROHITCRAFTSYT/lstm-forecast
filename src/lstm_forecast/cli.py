@@ -9,7 +9,7 @@ from lstm_forecast.config import get_settings
 
 
 def _cmd_forecast(args: argparse.Namespace) -> int:
-    from lstm_forecast import Forecaster, Pipeline
+    from lstm_forecast import Forecaster
     from lstm_forecast.ai import generate_insights
     from lstm_forecast.data import add_finance_features, load_prices
     from lstm_forecast.transforms import default_finance_transformer
@@ -27,11 +27,31 @@ def _cmd_forecast(args: argparse.Namespace) -> int:
         name="lstm",
     )
     transformer, reverter = default_finance_transformer(seasonal_period=args.seasonal_period)
-    pipe = Pipeline(transformer=transformer, reverter=reverter)
-    result = pipe.fit_predict(f, lags=args.lags, epochs=args.epochs, alpha=args.alpha)
+    f.attach_transformer(transformer, reverter)
+
+    from lstm_forecast.forecasting.forecaster import ModelSpec
+
+    spec = ModelSpec(lags=args.lags, epochs=args.epochs, ensemble=args.ensemble)
+    if args.tune:
+        from lstm_forecast.ai import suggest_tuning
+        from lstm_forecast.forecasting.tuning import specs_from_suggestion
+
+        print("Cross-validating AI-suggested hyperparameters…")
+        specs = specs_from_suggestion(suggest_tuning(f.y), base=spec)
+        report = f.tune(specs, k=2)
+        spec = f.spec  # tune() adopts the best candidate on the forecaster
+        print(f"  best: lags={spec.lags} hidden={spec.hidden_size} "
+              f"layers={spec.num_layers} (CV RMSE={report['best_cv_rmse']})")
+
+    result = f.fit_predict(spec, alpha=args.alpha)
 
     print(f"\n=== {args.ticker} — test-set benchmark (RMSE-sorted) ===")
     print(result.metrics_frame().to_string())
+    dm = result.significance.get("vs_naive")
+    if isinstance(dm, dict):
+        sig = "significant" if dm.get("significant") else "not significant"
+        print(f"\nDiebold-Mariano vs naive: winner={dm.get('winner')}, "
+              f"p={dm.get('p_value'):.3f} ({sig} at 5%)")
     print(f"\n=== {args.horizon}-step forecast ===")
     for d, p, lo, hi in zip(result.future_dates, result.point, result.lower, result.upper,
                             strict=False):
@@ -75,6 +95,9 @@ def build_parser() -> argparse.ArgumentParser:
     fc.add_argument("--test-length", type=int, default=42)
     fc.add_argument("--lags", type=int, default=21)
     fc.add_argument("--epochs", type=int, default=60)
+    fc.add_argument("--ensemble", type=int, default=1, help="Number of seeded models to average.")
+    fc.add_argument("--tune", action="store_true",
+                    help="Cross-validate AI-suggested hyperparameters before forecasting.")
     fc.add_argument("--alpha", type=float, default=0.1)
     fc.add_argument("--seasonal-period", type=int, default=5)
     fc.add_argument("--features", action="store_true", help="Add finance features (multivariate).")

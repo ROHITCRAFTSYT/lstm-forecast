@@ -71,7 +71,9 @@ def run_forecast(
 
     from lstm_forecast.forecasting.forecaster import ModelSpec
 
-    spec = ModelSpec(lags=req.lags, hidden_size=req.hidden_size, epochs=req.epochs)
+    spec = ModelSpec(
+        lags=req.lags, hidden_size=req.hidden_size, epochs=req.epochs, ensemble=req.ensemble
+    )
     result = f.fit_predict(
         spec,
         alpha=req.alpha,
@@ -96,6 +98,7 @@ def to_response(req: ForecastRequest, result: ForecastResult, *, insights: str |
         forecast=points,
         metrics=result.metrics,
         interval=result.interval,
+        significance=result.significance,
         best_model=str(best) if best is not None else None,
         insights=insights,
     )

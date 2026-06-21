@@ -25,6 +25,7 @@ import numpy as np
 import pandas as pd
 
 from lstm_forecast.evaluation.metrics import interval_metrics, point_metrics
+from lstm_forecast.evaluation.significance import diebold_mariano
 from lstm_forecast.forecasting.backtest import BacktestResult, backtest, dynamic_intervals
 from lstm_forecast.forecasting.baselines import baseline_registry
 from lstm_forecast.forecasting.conformal import conformal_intervals, conformal_quantile
@@ -49,6 +50,7 @@ class ModelSpec:
     use_attention: bool = True
     quantiles: list[float] | None = None
     target_mode: str = "delta"  # "delta" (predict change from last value) or "level"
+    ensemble: int = 1  # number of differently-seeded models to average (>=1)
     epochs: int = 100
     batch_size: int = 32
     lr: float = 1e-3
@@ -72,6 +74,7 @@ class ForecastResult:
     test_pred: np.ndarray | None = None
     metrics: dict[str, dict[str, float]] = field(default_factory=dict)
     interval: dict[str, float] = field(default_factory=dict)
+    significance: dict[str, object] = field(default_factory=dict)
     backtest_result: BacktestResult | None = None
     alpha: float = 0.1
 
@@ -142,7 +145,7 @@ class Forecaster:
         self.retriever: AnalogRetriever | None = None
         self.spec = ModelSpec()
         self.result: ForecastResult | None = None
-        self._last_trainer: Trainer | None = None
+        self._last_trainers: list[Trainer] | None = None
 
         if n < self.horizon + self.test_length + self.spec.lags:
             # Not fatal here (spec may change), but warn the caller early via attribute.
@@ -186,16 +189,18 @@ class Forecaster:
                 cols.append(analog)
         return np.concatenate(cols, axis=1).astype(np.float32)
 
-    def _train_once(
+    def _train_models(
         self,
         target: np.ndarray,
         exog_slice: np.ndarray | None,
         horizon: int,
-    ) -> tuple[Trainer, np.ndarray]:
-        """Fit a fresh model on ``target`` and return ``(trainer, last_input_window)``.
+    ) -> tuple[list[Trainer], np.ndarray]:
+        """Fit ``spec.ensemble`` differently-seeded models and return ``(trainers, window)``.
 
         ``target`` is in the *original* scale; the (already-fit) transformer is applied here.
-        The returned window is for one-shot future prediction.
+        Averaging an ensemble of models reduces variance from random initialisation and
+        gives better-calibrated point forecasts. The returned window is for one-shot
+        future prediction.
         """
         positions = np.arange(len(target))
         if self.transformer is not None:
@@ -210,38 +215,43 @@ class Forecaster:
             # from a random-walk (naive) baseline rather than the non-stationary level.
             anchors = x[:, -1, 0:1]  # (n, 1) last target value of each input window
             y = y - anchors
-        model = LSTMForecaster(
-            n_features=features.shape[1],
-            horizon=horizon,
-            hidden_size=self.spec.hidden_size,
-            num_layers=self.spec.num_layers,
-            dropout=self.spec.dropout,
-            use_attention=self.spec.use_attention,
-            quantiles=self.spec.quantiles,
-        )
-        cfg = TrainerConfig(
-            epochs=self.spec.epochs,
-            batch_size=self.spec.batch_size,
-            lr=self.spec.lr,
-            weight_decay=self.spec.weight_decay,
-            patience=self.spec.patience,
-            val_fraction=self.spec.val_fraction,
-            device=self.device,
-            quantiles=self.spec.quantiles,
-        )
-        trainer = Trainer(model, cfg).fit(x, y)
+
+        trainers: list[Trainer] = []
+        for member in range(max(1, self.spec.ensemble)):
+            set_seed(self.seed + member)  # de-correlate ensemble members
+            model = LSTMForecaster(
+                n_features=features.shape[1],
+                horizon=horizon,
+                hidden_size=self.spec.hidden_size,
+                num_layers=self.spec.num_layers,
+                dropout=self.spec.dropout,
+                use_attention=self.spec.use_attention,
+                quantiles=self.spec.quantiles,
+            )
+            cfg = TrainerConfig(
+                epochs=self.spec.epochs,
+                batch_size=self.spec.batch_size,
+                lr=self.spec.lr,
+                weight_decay=self.spec.weight_decay,
+                patience=self.spec.patience,
+                val_fraction=self.spec.val_fraction,
+                device=self.device,
+                quantiles=self.spec.quantiles,
+            )
+            trainers.append(Trainer(model, cfg).fit(x, y))
         window = last_input_window(features, lags=self.spec.lags)
-        return trainer, window
+        return trainers, window
 
     def _predict_horizon(
         self,
-        trainer: Trainer,
+        trainers: list[Trainer],
         window: np.ndarray,
         horizon: int,
         positions: np.ndarray,
     ) -> np.ndarray:
-        """Predict ``horizon`` steps and revert to the original scale."""
-        pred_t = trainer.predict_point(window).ravel()[:horizon]
+        """Ensemble-average a horizon forecast and revert to the original scale."""
+        preds = np.stack([t.predict_point(window).ravel()[:horizon] for t in trainers], axis=0)
+        pred_t = preds.mean(axis=0)
         if self.spec.target_mode == "delta":
             # Add back the anchor (last transformed target value of the input window).
             pred_t = pred_t + float(window[0, -1, 0])
@@ -279,20 +289,33 @@ class Forecaster:
 
         if self.transformer is not None:
             self.transformer.fit(train_target, np.arange(split))
-        trainer, window = self._train_once(train_target, train_exog, self.test_length)
+        trainers, window = self._train_models(train_target, train_exog, self.test_length)
         test_positions = np.arange(split, n)
-        test_pred = self._predict_horizon(trainer, window, self.test_length, test_positions)
+        test_pred = self._predict_horizon(trainers, window, self.test_length, test_positions)
 
-        metrics: dict[str, dict[str, float]] = {}
-        if benchmark:
-            metrics[self.name] = point_metrics(
+        # The model's own test metric is always computed (CV/tuning relies on it); baselines
+        # and the significance test are only run when benchmarking.
+        metrics: dict[str, dict[str, float]] = {
+            self.name: point_metrics(
                 test_actual, test_pred, y_train=train_target, season=max(lags, 1)
             )
+        }
+        significance: dict[str, object] = {}
+        if benchmark:
+            baseline_preds: dict[str, np.ndarray] = {}
             for bname, model in baseline_registry(season=min(5, lags)).items():
                 bpred = model.fit(train_target).predict(self.test_length)
+                baseline_preds[bname] = bpred
                 metrics[bname] = point_metrics(
                     test_actual, bpred, y_train=train_target, season=max(lags, 1)
                 )
+            # Diebold-Mariano: is the model significantly better than naive?
+            if "naive" in baseline_preds:
+                dm = diebold_mariano(
+                    test_actual - test_pred, test_actual - baseline_preds["naive"]
+                )
+                verdict = {"a": "model", "b": "naive", "tie": "no significant difference"}[dm.better]
+                significance["vs_naive"] = {**dm.as_dict(), "winner": verdict}
 
         # Residuals on the test window double as the conformal calibration set.
         test_residuals = test_actual - test_pred
@@ -300,10 +323,10 @@ class Forecaster:
         # ---- 2. Production forecast (transformer refit on all data) ----------------------
         if self.transformer is not None:
             self.transformer.fit(self.y, np.arange(n))
-        final_trainer, final_window = self._train_once(self.y, self.exog, self.horizon)
-        self._last_trainer = final_trainer
+        final_trainers, final_window = self._train_models(self.y, self.exog, self.horizon)
+        self._last_trainers = final_trainers
         future_positions = np.arange(n, n + self.horizon)
-        point = self._predict_horizon(final_trainer, final_window, self.horizon, future_positions)
+        point = self._predict_horizon(final_trainers, final_window, self.horizon, future_positions)
 
         # ---- 3. Intervals ---------------------------------------------------------------
         bt_result: BacktestResult | None = None
@@ -331,28 +354,77 @@ class Forecaster:
             history_dates=self.dates,  # type: ignore[arg-type]
             history_values=self.y,
             test_dates=test_dates,  # type: ignore[arg-type]
-            test_actual=test_actual if benchmark else None,
-            test_pred=test_pred if benchmark else None,
+            test_actual=test_actual,
+            test_pred=test_pred,
             metrics=metrics,
             interval=ivl,
+            significance=significance,
             backtest_result=bt_result,
             alpha=alpha,
         )
         return self.result
 
+    def tune(
+        self,
+        specs: list[ModelSpec],
+        *,
+        k: int = 3,
+        val_length: int | None = None,
+        cv_epochs: int = 40,
+    ) -> dict[str, object]:
+        """Walk-forward cross-validate ``specs`` and adopt the best one.
+
+        Sets ``self.spec`` to the lowest mean-CV-RMSE candidate and returns a report. Pair
+        with :func:`lstm_forecast.forecasting.tuning.specs_from_suggestion` to evaluate an
+        AI-proposed grid — the LLM narrows the search; CV makes the final call.
+        """
+        from lstm_forecast.forecasting.tuning import (
+            _transformer_factory_from,
+            walk_forward_cv,
+        )
+
+        factory = _transformer_factory_from(self.transformer)
+        results: list[dict[str, object]] = []
+        best_spec: ModelSpec | None = None
+        best_score = float("inf")
+        for spec in specs:
+            score = walk_forward_cv(
+                self.y,
+                spec=spec,
+                exog=self.exog,
+                transformer_factory=factory,
+                retriever=self.retriever,
+                k=k,
+                val_length=val_length,
+                cv_epochs=cv_epochs,
+                seed=self.seed,
+                device=self.device,
+            )
+            results.append(
+                {"lags": spec.lags, "hidden_size": spec.hidden_size,
+                 "num_layers": spec.num_layers, "dropout": spec.dropout, "cv_rmse": score}
+            )
+            if score < best_score:
+                best_score, best_spec = score, spec
+        if best_spec is not None:
+            self.spec = best_spec
+        return {"best_spec": best_spec, "best_cv_rmse": best_score, "results": results}
+
     def _run_backtest(self, *, alpha: float, n_windows: int) -> BacktestResult:
         """Backtest the LSTM by refitting at multiple cutoffs (expensive)."""
-        # Use a lighter spec during backtesting to keep refit cost bounded.
+        # Use a lighter spec during backtesting (fewer epochs, single model) to bound cost.
         original_epochs = self.spec.epochs
+        original_ensemble = self.spec.ensemble
         self.spec.epochs = min(original_epochs, 40)
+        self.spec.ensemble = 1
 
         def fit_predict_fn(train: np.ndarray) -> np.ndarray:
             positions = np.arange(len(train))
             if self.transformer is not None:
                 self.transformer.fit(train, positions)
-            trainer, window = self._train_once(train, None, self.horizon)
+            trainers, window = self._train_models(train, None, self.horizon)
             fut_pos = np.arange(len(train), len(train) + self.horizon)
-            return self._predict_horizon(trainer, window, self.horizon, fut_pos)
+            return self._predict_horizon(trainers, window, self.horizon, fut_pos)
 
         try:
             return backtest(
@@ -360,6 +432,7 @@ class Forecaster:
             )
         finally:
             self.spec.epochs = original_epochs
+            self.spec.ensemble = original_ensemble
             # Restore the transformer fit on the full series for downstream reverts.
             if self.transformer is not None:
                 self.transformer.fit(self.y, np.arange(self.y.size))
@@ -377,7 +450,7 @@ class Forecaster:
         retraining. Requires ``transfer_from`` to have been fit (``fit_predict`` called)
         and to share this Forecaster's lag/feature configuration.
         """
-        if transfer_from._last_trainer is None:
+        if not transfer_from._last_trainers:
             raise RuntimeError("transfer_from must be fit (call fit_predict first).")
         set_seed(self.seed)
         self.spec = transfer_from.spec
@@ -395,7 +468,7 @@ class Forecaster:
         features = self._build_feature_matrix(t_target, self.exog, positions=positions)
         window = last_input_window(features, lags=self.spec.lags)
         fut_pos = np.arange(n, n + h)
-        point = self._predict_horizon(transfer_from._last_trainer, window, h, fut_pos)
+        point = self._predict_horizon(transfer_from._last_trainers, window, h, fut_pos)
 
         # Reuse the source model's calibration residuals if available.
         if transfer_from.result is not None and transfer_from.result.test_actual is not None:

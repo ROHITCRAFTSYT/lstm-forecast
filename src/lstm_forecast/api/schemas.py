@@ -32,6 +32,7 @@ class ForecastRequest(BaseModel):
     lags: int = Field(default=21, ge=2, le=512)
     hidden_size: int = Field(default=64, ge=4, le=512)
     epochs: int = Field(default=60, ge=1, le=1000)
+    ensemble: int = Field(default=1, ge=1, le=10, description="Number of seeded models to average.")
     alpha: float = Field(default=0.1, gt=0, lt=1)
     seasonal_period: int | None = Field(default=5, ge=2)
     use_features: bool = Field(default=False, description="Add finance features (multivariate).")
@@ -57,6 +58,7 @@ class ForecastResponse(BaseModel):
     forecast: list[IntervalPoint]
     metrics: dict[str, dict[str, float]]
     interval: dict[str, float]
+    significance: dict[str, object] = Field(default_factory=dict)
     best_model: str | None = None
     insights: str | None = None
 

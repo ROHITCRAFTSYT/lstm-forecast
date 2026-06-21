@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/) and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-06-21
+
+### Added
+- **Cross-validated tuning** — `Forecaster.tune(specs)` evaluates a candidate grid with
+  walk-forward CV and adopts the winner; `forecasting.tuning.specs_from_suggestion` converts
+  an AI `TuningSuggestion` into specs, closing the "LLM proposes, data decides" loop.
+- **Ensemble forecasting** — `ModelSpec.ensemble=N` trains N differently-seeded models and
+  averages them for lower-variance, better-calibrated point forecasts.
+- **Diebold–Mariano significance test** (`evaluation.significance`) — every benchmarked run
+  reports whether the model is *statistically* better than naive (HLN small-sample corrected);
+  surfaced in `ForecastResult.significance`, the API response, the CLI, and AI insights.
+- **CLI** — `forecast --tune` (CV the AI grid) and `forecast --ensemble N` flags.
+
+### Changed
+- The model's own test metric is now always computed (even with `benchmark=False`), enabling CV.
+
 ## [0.1.0] - 2026-06-21
 
 ### Added
