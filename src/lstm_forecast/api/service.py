@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import threading
+from collections import OrderedDict
 
 import pandas as pd
 
@@ -16,6 +17,7 @@ from lstm_forecast.api.schemas import (
     SeriesInput,
 )
 from lstm_forecast.data import add_finance_features, load_prices
+from lstm_forecast.evaluation import calibration_curve
 from lstm_forecast.forecasting.forecaster import Forecaster, ForecastResult
 from lstm_forecast.transforms import default_finance_transformer
 
@@ -95,6 +97,10 @@ def to_response(req: ForecastRequest, result: ForecastResult, *, insights: str |
         )
     ]
     best = result.metrics_frame().index[0] if result.metrics else None
+    calibration: dict[str, object] = {}
+    if result.test_actual is not None and result.test_pred is not None:
+        residuals = result.test_actual - result.test_pred
+        calibration = dict(calibration_curve(result.test_actual, result.test_pred, residuals))
     return ForecastResponse(
         name="lstm",
         horizon=req.horizon,
@@ -103,6 +109,7 @@ def to_response(req: ForecastRequest, result: ForecastResult, *, insights: str |
         metrics=result.metrics,
         interval=result.interval,
         significance=result.significance,
+        calibration=calibration,
         best_model=str(best) if best is not None else None,
         insights=insights,
     )
@@ -111,13 +118,15 @@ def to_response(req: ForecastRequest, result: ForecastResult, *, insights: str |
 # --------------------------------------------------------------------------- #
 # Trained-model cache                                                          #
 # --------------------------------------------------------------------------- #
-# An in-memory cache of fitted Forecasters keyed by a stable signature of the
-# request fields that affect training. Reusing a fitted model lets repeated
-# requests skip (re)training and go straight to ``forecast_future``. This is a
-# simple per-process cache; a multi-process deployment would persist fitted
-# models to ``settings.cache_dir`` (via ``Forecaster.save``/``load``) or an
-# external store instead.
-_MODEL_CACHE: dict[str, tuple[Forecaster, ForecastResult]] = {}
+# A bounded (LRU) in-memory cache of fitted Forecasters keyed by a stable signature
+# of the request fields that affect training. Reusing a fitted model lets repeated
+# requests skip (re)training and go straight to ``forecast_future``. The LRU bound
+# stops the cache from growing without limit under many distinct requests (each
+# entry holds an ensemble of trained models). This is a per-process cache; a
+# multi-process deployment would persist fitted models to ``settings.cache_dir``
+# (via ``Forecaster.save``/``load``) or an external store instead.
+_MODEL_CACHE_MAXSIZE = 32
+_MODEL_CACHE: OrderedDict[str, tuple[Forecaster, ForecastResult]] = OrderedDict()
 _MODEL_CACHE_LOCK = threading.Lock()
 
 
@@ -156,6 +165,8 @@ def run_forecast_cached(req: ForecastRequest) -> tuple[Forecaster, ForecastResul
     key = request_cache_key(req)
     with _MODEL_CACHE_LOCK:
         cached = _MODEL_CACHE.get(key)
+        if cached is not None:
+            _MODEL_CACHE.move_to_end(key)  # mark most-recently-used
     if cached is not None:
         f, result = cached
         # Re-run only the (cheap) future projection to confirm the model is usable.
@@ -165,6 +176,9 @@ def run_forecast_cached(req: ForecastRequest) -> tuple[Forecaster, ForecastResul
     f, result = run_forecast(req)
     with _MODEL_CACHE_LOCK:
         _MODEL_CACHE[key] = (f, result)
+        _MODEL_CACHE.move_to_end(key)
+        while len(_MODEL_CACHE) > _MODEL_CACHE_MAXSIZE:
+            _MODEL_CACHE.popitem(last=False)  # evict least-recently-used
     return f, result
 
 

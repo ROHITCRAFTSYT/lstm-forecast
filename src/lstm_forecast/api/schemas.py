@@ -59,6 +59,10 @@ class ForecastResponse(BaseModel):
     metrics: dict[str, dict[str, float]]
     interval: dict[str, float]
     significance: dict[str, object] = Field(default_factory=dict)
+    calibration: dict[str, object] = Field(
+        default_factory=dict,
+        description="Reliability curve: nominal vs empirical coverage + calibration_error.",
+    )
     best_model: str | None = None
     insights: str | None = None
 

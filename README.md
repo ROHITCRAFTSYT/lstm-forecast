@@ -230,8 +230,10 @@ curl -s localhost:8000/forecast -H 'content-type: application/json' -d '{
 }' | jq '.best_model, .metrics'
 ```
 
-Fitted models are kept in an in-process cache keyed by the training-relevant request
-fields, so repeating an identical request skips retraining and reuses the saved model.
+Fitted models are kept in an in-process **LRU-bounded** cache keyed by the training-relevant
+request fields, so repeating an identical request skips retraining and reuses the saved
+model. Forecast responses also include a `calibration` reliability curve (nominal vs
+empirical coverage).
 
 ---
 

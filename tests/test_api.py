@@ -45,6 +45,11 @@ def test_forecast_endpoint(client):
     assert body["best_model"] is not None
     pt = body["forecast"][0]
     assert pt["lower"] <= pt["point"] <= pt["upper"]
+    # Calibration curve is surfaced in the response.
+    cal = body["calibration"]
+    assert "calibration_error" in cal
+    assert len(cal["nominal"]) == len(cal["empirical"])
+    assert all(0.0 <= e <= 1.0 for e in cal["empirical"])
 
 
 def test_forecast_validation_error(client):

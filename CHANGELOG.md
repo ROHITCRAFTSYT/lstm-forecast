@@ -12,6 +12,10 @@ All notable changes to this project are documented here. The format is based on
   Groq, vLLM, …). Selected via `LSTM_FORECAST_AI__PROVIDER`; structured output and the chat
   assistant work uniformly across providers; Anthropic remains the default. New extras
   `ai-openai`, `ai-google`, `ai-all`.
+- **Calibration in the API** — `POST /forecast` (and `/backtest`) now return a `calibration`
+  reliability curve (nominal vs empirical coverage + `calibration_error`).
+- **Bounded model cache** — the in-process trained-model cache is now LRU-capped
+  (`_MODEL_CACHE_MAXSIZE`, default 32) so it can't grow without limit.
 - **Model persistence** — `Forecaster.save(path)` / `Forecaster.load(path)` +
   `forecast_future()` produce forecasts from a saved ensemble with **no retraining**.
 - **Cross-validated tuning** — `Forecaster.tune(specs)` evaluates a candidate grid with

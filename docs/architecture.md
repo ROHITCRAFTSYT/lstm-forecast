@@ -75,9 +75,11 @@ forecasts with no retraining — used to avoid retraining on every API request.
 lock-guarded dict). `POST /jobs/forecast` submits a forecast as a background job and returns a
 `job_id`; `GET /jobs/{id}` polls status and returns the result when done. It is in-process and
 single-worker by design — a production deployment would back it with a durable broker (Redis +
-Celery / RQ). Separately, `api/service.py` keeps an in-memory cache of fitted `Forecaster`s
-keyed by a hash of the training-relevant request fields, so repeated identical requests reuse
-the fitted model via `forecast_future()` instead of retraining.
+Celery / RQ). Separately, `api/service.py` keeps an LRU-bounded in-memory cache of fitted
+`Forecaster`s keyed by a hash of the training-relevant request fields, so repeated identical
+requests reuse the fitted model via `forecast_future()` instead of retraining (and the cache
+is capped so it can't grow without limit). Forecast responses also carry a `calibration`
+reliability curve.
 
 ### Calibration metric
 `evaluation.calibration_curve` builds symmetric conformal-style intervals from the calibration
