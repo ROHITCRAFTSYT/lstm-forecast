@@ -1,9 +1,8 @@
 """Compose transforms + forecasting + reversion into a single call.
 
-Mirrors the article's ``Pipeline(steps=[('Transform', ...), ('Forecast', ...), ('Revert', ...)])``
-ergonomics, but as a thin, typed wrapper around :class:`Forecaster`. The transform/revert
-steps are handled by attaching a fitted-on-train transformer to the forecaster (which then
-applies and inverts it at the right positions internally).
+A thin, typed wrapper around :class:`Forecaster`: the transform/revert steps are handled by
+attaching a fitted-on-train transformer to the forecaster (which then applies and inverts it
+at the right positions internally), so a whole run is one ``fit_predict`` call.
 """
 
 from __future__ import annotations

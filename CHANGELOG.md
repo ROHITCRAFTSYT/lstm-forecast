@@ -44,7 +44,7 @@ All notable changes to this project are documented here. The format is based on
   `StandardScale`, `Log`, `Difference`, composed via `Transformer`/`Reverter`; correct
   inversion at future positions.
 - **Public API** — `Forecaster` (test-set benchmarking, conformal intervals, transfer
-  learning) and `Pipeline` composer mirroring the scalecast ergonomics.
+  learning) and a `Pipeline` composer for one-call transform → forecast → revert runs.
 - **Probabilistic forecasting** — split-conformal static intervals and backtest
   residual-matrix dynamic (horizon-aware) intervals.
 - **Baselines** — Naive, Drift, Seasonal-Naive, ARIMA, ETS for honest benchmarking.
@@ -57,4 +57,4 @@ All notable changes to this project are documented here. The format is based on
   `/transfer`, `/health`), Streamlit dashboard, and a CLI (`lstm-forecast`).
 - **Packaging & ops** — pip-installable package with optional extras, Dockerfiles +
   compose, GitHub Actions CI (lint/type/test matrix + image build), pre-commit, mkdocs docs,
-  runnable examples for the article's five capabilities, and a model card.
+  runnable examples for all five forecasting capabilities, and a model card.

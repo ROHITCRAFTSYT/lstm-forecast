@@ -1,7 +1,7 @@
-"""Capability 2 — Multivariate forecasting (article §2, upgraded).
+"""Multivariate forecasting — engineered finance features as exogenous inputs.
 
-Engineered finance features (RSI/MACD/Bollinger/volatility/Fourier) are added as exogenous
-inputs. The univariate vs multivariate comparison shows whether the extra signal helps.
+RSI/MACD/Bollinger/volatility/Fourier features are added alongside the price. The
+univariate vs multivariate comparison shows whether the extra signal helps.
 
     python examples/02_multivariate.py AAPL
 """

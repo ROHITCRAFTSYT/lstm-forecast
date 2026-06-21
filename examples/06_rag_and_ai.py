@@ -1,4 +1,4 @@
-"""Bonus — RAG + Claude AI + cross-validated tuning (beyond the article).
+"""Retrieval-augmented forecasting + LLM AI + cross-validated tuning.
 
 Demonstrates the full "LLM proposes, data decides" loop:
 1. build an analog-window RAG index from training data and condition the LSTM on it,

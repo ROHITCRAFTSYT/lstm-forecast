@@ -1,8 +1,8 @@
 """Benchmark baselines so every run reports the model *against* simple alternatives.
 
-The design doc's honesty constraint: "outperform" must be measured, not asserted. These
-baselines are evaluated on the same held-out test set as the LSTM. Statistical baselines
-(ARIMA/ETS) degrade gracefully to a naive forecast if statsmodels is unavailable or fails.
+Honesty constraint: "outperform" must be measured, not asserted. These baselines are
+evaluated on the same held-out test set as the LSTM. Statistical baselines (ARIMA/ETS)
+degrade gracefully to a naive forecast if statsmodels is unavailable or fails.
 """
 
 from __future__ import annotations

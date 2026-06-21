@@ -1,9 +1,9 @@
 """lstm-forecast: production-grade LSTM time-series forecasting with RAG and Claude AI.
 
-The public surface mirrors the ergonomics of the scalecast library referenced in the
-project's design doc, but the forecasting core is a custom PyTorch model with attention
-and probabilistic (quantile + conformal) heads, plus optional retrieval-augmented
-forecasting and Claude-powered insights.
+A custom PyTorch forecasting core with attention and probabilistic (quantile + conformal)
+heads, a leakage-safe reversible transform pipeline, optional retrieval-augmented
+forecasting, honest baseline benchmarking, and a provider-agnostic LLM layer for insights,
+a chat assistant, and cross-validated tuning.
 
 Typical usage::
 

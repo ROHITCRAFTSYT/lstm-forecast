@@ -1,6 +1,6 @@
-"""Capability 3 — Probabilistic forecasting (article §3, upgraded).
+"""Probabilistic forecasting — split-conformal intervals with a coverage check.
 
-Static split-conformal intervals with a coverage check on the held-out test set. Conformal
+Static conformal intervals with a coverage check on the held-out test set. Conformal
 calibration gives marginal coverage guarantees regardless of the model's error distribution.
 
     python examples/03_probabilistic.py AAPL

@@ -1,4 +1,4 @@
-"""Reversible, leakage-safe series transformations (scalecast-style)."""
+"""Reversible, leakage-safe series transformations."""
 
 from __future__ import annotations
 

@@ -67,7 +67,7 @@ class DetrendTransform(SeriesTransform):
     """Remove a polynomial trend fit against the positional index.
 
     With ``poly_order=1`` this removes a linear trend; ``poly_order=2`` a quadratic one
-    (matching the air-passengers example in the design doc's source article).
+    (useful for series with mild curvature in their long-run level).
     """
 
     def __init__(self, poly_order: int = 1) -> None:

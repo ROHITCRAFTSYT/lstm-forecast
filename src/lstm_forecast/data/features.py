@@ -114,8 +114,7 @@ def add_finance_features(
 ) -> pd.DataFrame:
     """Augment an OHLCV frame with the requested causal features.
 
-    Parameters mirror the design doc's finance feature set. Returns a new frame; the
-    original ``price_col`` is preserved as the forecasting target.
+    Returns a new frame; the original ``price_col`` is preserved as the forecasting target.
     """
     if price_col not in df.columns:
         raise KeyError(f"price_col {price_col!r} not in dataframe columns {list(df.columns)}")

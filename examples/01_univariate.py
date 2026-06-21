@@ -1,7 +1,7 @@
-"""Capability 1 — Univariate forecasting (article §1, upgraded).
+"""Univariate forecasting — a single price series.
 
-A single price series, reversible transforms, conformal intervals, and an honest benchmark
-against simple baselines. Runs offline (synthetic fallback) if no data provider is present.
+Reversible transforms, conformal intervals, and an honest benchmark against simple
+baselines. Runs offline (synthetic fallback) if no data provider is present.
 
     python examples/01_univariate.py AAPL
 """

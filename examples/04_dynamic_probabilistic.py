@@ -1,4 +1,4 @@
-"""Capability 4 — Dynamic probabilistic forecasting (article §4, upgraded).
+"""Dynamic probabilistic forecasting — horizon-aware backtested intervals.
 
 A rolling-origin backtest builds a residual matrix of shape (n_windows, horizon); a per-step
 quantile of the absolute residuals yields **horizon-aware** intervals that widen with the

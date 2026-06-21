@@ -82,8 +82,7 @@ def default_finance_transformer(
 
     Detrend → (optional) deseason → robust-scale. Robust scaling is preferred for
     financial series because they contain outliers (gaps, spikes). Returns
-    ``(transformer, reverter)`` mirroring the article's ``find_optimal_transformation``
-    output shape.
+    ``(transformer, reverter)`` so the same stack can be applied and inverted.
     """
     ops: list[SeriesTransform] = [DetrendTransform(poly_order=poly_order)]
     if seasonal_period:

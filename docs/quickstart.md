@@ -32,7 +32,7 @@ print(result.metrics_frame())   # model vs baselines, RMSE-sorted
 f.plot(ci=True)
 ```
 
-## The five capabilities
+## Forecasting capabilities
 
 Each has a runnable example under `examples/`:
 

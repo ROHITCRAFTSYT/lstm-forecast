@@ -3,7 +3,7 @@
 Backtesting refits the forecaster at successively later cutoffs and records the residual at
 each horizon step. The stacked residuals form a matrix of shape ``(n_windows, horizon)``.
 Taking a per-step quantile of the absolute residuals yields **dynamic** intervals whose
-width grows with the forecast step — the rigorous version of the design doc's section 4.
+width grows with the forecast step (horizon-aware probabilistic forecasting).
 """
 
 from __future__ import annotations
@@ -51,8 +51,7 @@ def backtest(
     ----------
     fit_predict_fn:
         Callable mapping a training series (1-D) to a length-``horizon`` point forecast.
-        It is invoked once per window — for an LSTM this means a full refit, matching the
-        article's iterative-backtesting description.
+        It is invoked once per window — for an LSTM this means a full refit per cutoff.
     y:
         Full observed series.
     horizon:
@@ -60,7 +59,7 @@ def backtest(
     n_windows:
         Number of backtest cutoffs (≥ 10 recommended for 90% dynamic intervals).
     step:
-        Spacing between consecutive cutoffs (``jump_back`` in the article).
+        Spacing between consecutive backtest cutoffs.
     min_train:
         Minimum training length for the earliest window. Defaults to half the series.
     """

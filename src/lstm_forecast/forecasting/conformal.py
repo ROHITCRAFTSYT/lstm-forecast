@@ -32,7 +32,7 @@ def conformal_intervals(
     """Static conformal intervals around a point forecast.
 
     Every horizon step gets the same radius (the calibration-set conformal quantile),
-    producing the "static" interval described in the design doc's probabilistic section.
+    producing a "static" interval (constant width across the horizon).
     Returns ``(lower, upper)``.
     """
     point = np.asarray(point, dtype=float).ravel()

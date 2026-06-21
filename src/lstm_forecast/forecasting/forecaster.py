@@ -1,9 +1,9 @@
-"""The public :class:`Forecaster` — the headline API users will copy.
+"""The public :class:`Forecaster` — the headline API.
 
-It mirrors the ergonomics of the scalecast ``Forecaster`` referenced in the design doc
-(``test_length``, ``future_dates``, ``plot(ci=True)``, ``transfer_predict``) but the engine
-is the custom PyTorch model with attention and probabilistic heads, plus optional
-retrieval-augmented features, conformal intervals, baseline benchmarking and backtesting.
+A high-level, declarative interface (``test_length``, ``future_dates``, ``plot(ci=True)``,
+``transfer_predict``) over the custom PyTorch model with attention and probabilistic heads,
+plus optional retrieval-augmented features, conformal intervals, baseline benchmarking and
+backtesting.
 
 Flow on ``fit_predict``:
 
@@ -448,10 +448,10 @@ class Forecaster:
     ) -> ForecastResult:
         """Forecast this (new) series using a model trained on ``transfer_from``.
 
-        Implements the design doc's transfer-learning scenarios: apply a model fit on one
-        series to new data from the same series, or to a different but similar series — no
-        retraining. Requires ``transfer_from`` to have been fit (``fit_predict`` called)
-        and to share this Forecaster's lag/feature configuration.
+        Two transfer-learning scenarios: apply a model fit on one series to fresh data from
+        the same series, or to a different but similar series — no retraining. Requires
+        ``transfer_from`` to have been fit (``fit_predict`` called) and to share this
+        Forecaster's lag/feature configuration.
         """
         if not transfer_from._last_trainers:
             raise RuntimeError("transfer_from must be fit (call fit_predict first).")

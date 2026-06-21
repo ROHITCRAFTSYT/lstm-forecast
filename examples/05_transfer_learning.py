@@ -1,7 +1,7 @@
-"""Capability 5 — Transfer learning (article §5, upgraded).
+"""Transfer learning — reuse a fitted model on a related series.
 
 Train a model on a source series, then forecast a *different* (related) series with no
-retraining via ``transfer_predict`` — the article's "new data" and "related series" scenarios.
+retraining via ``transfer_predict`` (the "new data" and "related series" scenarios).
 
     python examples/05_transfer_learning.py AAPL MSFT
 """

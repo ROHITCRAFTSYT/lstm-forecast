@@ -12,14 +12,14 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](CONTRIBUTING.md)
 
-This project reimagines the classic ["LSTM Model for Time Series, with Code"](https://towardsdatascience.com/) scalecast walkthrough as a **custom PyTorch system** you can actually ship: a clean library, a REST API, and a dashboard — all Dockerized, tested, and documented.
+A **custom PyTorch forecasting system** you can actually ship: a clean library, a REST API, and a dashboard — all Dockerized, tested, and documented. It pairs a modern LSTM (attention + probabilistic heads) with retrieval-augmented forecasting, conformal uncertainty, honest baseline benchmarking, and a provider-agnostic LLM layer.
 
 <p align="center">
   <img src="assets/forecast_example.png" alt="LSTM forecast with conformal prediction intervals and the test-set forecast tracking the actual series" width="92%">
 </p>
 <p align="center"><em>Forecast with a 90% conformal interval; the dashed line is the held-out test forecast tracking reality. Regenerate with <code>python scripts/make_readme_assets.py</code>.</em></p>
 
-It keeps the article's five capabilities and upgrades each one:
+Five forecasting capabilities, one consistent API:
 
 | Capability | This project |
 | --- | --- |
@@ -29,7 +29,7 @@ It keeps the article's five capabilities and upgrades each one:
 | Dynamic probabilistic | **rolling backtest residual matrix** → horizon-aware intervals |
 | Transfer learning | `transfer_predict` — reuse a fitted model on new/related series |
 
-…and adds three things the article never had:
+…plus capabilities a textbook LSTM tutorial won't give you:
 
 - 🔎 **Retrieval-augmented forecasting (RAG)** — index historical *analog* windows and condition the model on "what happened after shapes like the recent past".
 - 🤖 **Provider-agnostic AI layer** — natural-language forecast insights, a RAG **chat assistant** grounded in your docs + run results, and **LLM-assisted hyperparameter tuning** (the LLM proposes, cross-validation decides). Use **any model**: Claude (default), OpenAI, Gemini, local **Ollama**, or any OpenAI-compatible endpoint.
@@ -337,4 +337,4 @@ MIT — see [LICENSE](LICENSE).
 
 ---
 
-<sub>Built as a production-grade reimagining of the scalecast "LSTM for Time Series" walkthrough — custom PyTorch core, retrieval-augmented forecasting, and a Claude AI layer. Forecasts are uncertain and not financial advice.</sub>
+<sub>A production-grade forecasting system — custom PyTorch core, retrieval-augmented forecasting, conformal uncertainty, and a provider-agnostic LLM layer. Forecasts are uncertain and not financial advice.</sub>
