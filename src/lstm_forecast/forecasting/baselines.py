@@ -64,7 +64,7 @@ class SeasonalNaiveForecaster:
 
     def __init__(self, season: int = 5) -> None:
         self.season = season
-        self._tail = np.zeros(season)
+        self._tail: np.ndarray = np.zeros(season)
 
     def fit(self, y: np.ndarray) -> SeasonalNaiveForecaster:
         y = np.asarray(y, dtype=float).ravel()
